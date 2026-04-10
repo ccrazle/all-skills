@@ -12,8 +12,9 @@ description: >
 
 # Resume Scorer
 
-HR uploads resumes and a JD together. Claude reads everything directly, scores each
-applicant out of 100, and returns a ranked `.xlsx` scorecard. No external calls needed.
+HR uploads resumes and a JD together. Claude reads everything directly, applies a
+two-gate eligibility check (Experience + Education), scores each qualified applicant
+out of 100, and returns a ranked `.xlsx` scorecard. No external calls needed.
 
 ---
 
@@ -116,35 +117,91 @@ If extracted text is under 100 characters → flag as `"Unable to extract — po
 
 ---
 
-### Step 5 — Score each resume against the JD
+### Step 5 — Eligibility Gate (Mandatory Pass/Fail Check)
 
-For each resume, evaluate every requirement cluster using this scoring model:
+Before scoring, every applicant must pass **two mandatory gates**. These are not
+weighted scoring categories — they are binary pass/fail checks. If an applicant fails
+either gate, they are **rejected** and do not proceed to scoring.
+
+#### Gate A — Minimum Experience (Most Important)
+
+1. Extract the minimum experience requirement from the JD (e.g., "minimum 5 years",
+   "at least 3 years of experience", "5+ years").
+2. From the resume, calculate the applicant's total relevant experience by looking at
+   employment dates, years mentioned in summary/objective, or explicit statements
+   like "X years of experience in…".
+3. **Rule:** If the applicant's experience is **less than** the JD's minimum
+   requirement → **REJECTED**. Mark status as `"Rejected — Insufficient Experience"`.
+
+> Example: JD asks for "minimum 5 years". Applicant has 3 years → Rejected.
+
+#### Gate B — Education (Second Most Important)
+
+1. Extract the education requirement from the JD (e.g., "B.Tech required",
+   "MBA mandatory", "Bachelor's degree in Computer Science").
+2. From the resume, extract the applicant's highest qualification, field of study,
+   and any relevant certifications.
+3. **Rule:** If the applicant does **not** hold the minimum required degree or
+   qualification stated in the JD → **REJECTED**. Mark status as
+   `"Rejected — Education Criteria Not Met"`.
+
+> Example: JD requires "MBA". Applicant holds only a Bachelor's → Rejected.
+
+**Important notes on the gates:**
+- If the JD does not explicitly state a minimum experience or education requirement,
+  treat that gate as **auto-pass** for all applicants.
+- If an applicant fails **both** gates, mark as `"Rejected — Insufficient Experience & Education"`.
+- Rejected applicants still appear in the final report (with their rejection reason)
+  but receive **no score** — the Final Score column shows `"REJECTED"` instead of a number.
+
+---
+
+### Step 6 — Score each qualified resume against the JD
+
+**Only applicants who passed both gates proceed to scoring.**
+
+For each qualified resume, evaluate using this scoring model:
 
 | Category | What to assess | Weight |
 |----------|---------------|--------|
-| **Keyword & Skill Match** | Overlap of skills/tools between resume and JD | 46% |
-| **Experience Match** | Years of experience, domain relevance | 23% |
-| **Job Title / Role Alignment** | Candidate's past titles vs. the JD role | 15% |
-| **Education Match** | Degree, field of study, certifications | 15% |
+| **Skills Match** | Overlap of technical skills, tools, platforms, software, domain knowledge, and soft skills between resume and JD. Includes keyword matching and contextual skill assessment. | **60%** |
+| **Job Title / Role Alignment** | How closely the applicant's past job titles, roles, and responsibilities align with the JD's role. Checks whether the candidate has actually worked in a similar capacity. | **25%** |
+| **Experience Depth** | Beyond the minimum gate, rewards additional relevant experience. An applicant with 8 years when JD asks for 5 scores higher than one with exactly 5. Also considers domain relevance and progression. | **10%** |
+| **Education Strength** | Beyond the minimum gate, rewards higher qualifications, relevant certifications, prestigious institutions, or closely matched fields of study. | **5%** |
 
 Apply JD tier weights (Must/Should/Nice) on top of the category scores to produce
 the final weighted score out of 100.
 
+> **Why this distribution?** Experience and Education already serve as hard gates —
+> applicants who don't meet those minimums are already eliminated. Among qualified
+> candidates, **Skills** is the strongest differentiator (60%), followed by
+> **Role Alignment** (25%) to verify the candidate actually fits the position.
+> The remaining 15% rewards depth beyond the minimum thresholds.
+
 ---
 
-### Step 6 — Build and return the `.xlsx` report
+### Step 7 — Build and return the `.xlsx` report
 
 Write output to `/mnt/user-data/outputs/resume_scores.xlsx`.
 
-**Sheet 1 — Scores** (sorted by Final Score descending):
+**Sheet 1 — Scores** (sorted by: Qualified applicants first by Final Score descending,
+then Rejected applicants alphabetically):
 
-| Rank | Applicant Name | Final Score (/100) |
-|------|---------------|-------------------|
+| Rank | Applicant Name | Status | Experience Gate | Education Gate | Skills (/60) | Role Alignment (/25) | Experience Depth (/10) | Education Strength (/5) | Final Score (/100) | Rejection Reason |
+|------|---------------|--------|----------------|---------------|-------------|---------------------|----------------------|------------------------|-------------------|-----------------|
+
+- **Rank** — numbered only for qualified applicants; rejected applicants show `"—"`
+- **Status** — `"Qualified"` or `"Rejected"`
+- **Gate columns** — `"Pass"` or `"Fail"`
+- **Score columns** — filled for qualified applicants; `"—"` for rejected
+- **Final Score** — numeric for qualified; `"REJECTED"` for rejected
+- **Rejection Reason** — blank for qualified; specific reason for rejected
 
 Apply conditional formatting on Final Score:
 - 🟢 70–100 → Green (Strong match)
 - 🟡 40–69 → Yellow (Partial match)
 - 🔴 0–39 → Red (Poor match)
+- ⚫ REJECTED → Grey background
 
 After saving, call `present_files` to return the file to the user.
 
@@ -161,3 +218,7 @@ After saving, call `present_files` to return the file to the user.
 | Duplicate filenames | Append `(2)`, `(3)` |
 | Resume in non-English language | Attempt scoring, flag as "Low confidence" in score cell |
 | Only 1 file uploaded | Ask if it's a resume or JD; request the missing file |
+| JD has no minimum experience stated | Auto-pass all applicants on Experience Gate |
+| JD has no education requirement stated | Auto-pass all applicants on Education Gate |
+| Applicant's experience is ambiguous/undated | Estimate conservatively; flag as "Experience unclear" in notes |
+| Applicant has equivalent qualification (e.g., PGDM vs MBA) | Treat widely recognized equivalents as passing; flag for HR review |
