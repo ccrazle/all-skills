@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leave Credit System — Automated Leave Tracker</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,600,700&f[]=cabinet-grotesk@500,700,800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1c1917;
+    --ink-soft: #44403c;
+    --ink-muted: #78716c;
+    --ink-faint: #a8a29e;
+    --cream: #faf9f6;
+    --cream-dark: #f5f0eb;
+    --warm: #e7e0d8;
+    --accent: #b45309;
+    --accent-light: #d97706;
+    --accent-bg: rgba(180,83,9,0.06);
+    --accent-border: rgba(180,83,9,0.18);
+    --teal: #0f766e;
+    --teal-bg: rgba(15,118,110,0.06);
+    --teal-border: rgba(15,118,110,0.18);
+    --green: #15803d;
+    --green-bg: rgba(21,128,61,0.06);
+    --green-border: rgba(21,128,61,0.18);
+    --red: #b91c1c;
+    --red-bg: rgba(185,28,28,0.06);
+    --red-border: rgba(185,28,28,0.18);
+    --rule: #d6d3d1;
+    --rule-light: #e7e5e4;
+    --shadow-sm: 0 1px 3px rgba(28,25,23,0.04);
+    --shadow-md: 0 4px 20px rgba(28,25,23,0.06);
+    --shadow-lg: 0 12px 40px rgba(28,25,23,0.08);
+    --font-display: 'Cabinet Grotesk', 'Helvetica Neue', Helvetica, sans-serif;
+    --font-body: 'Satoshi', 'Helvetica Neue', Helvetica, sans-serif;
+    --font-mono: 'Source Code Pro', Consolas, monospace;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.75;
+    color: var(--ink-soft);
+    background: var(--cream);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background: rgba(180,83,9,0.15);
+    color: var(--ink);
+  }
+
+  .progress-bar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-light));
+    width: 0%;
+    z-index: 1000;
+    transition: width 0.1s linear;
+  }
+
+  .side-nav {
+    position: fixed;
+    right: 28px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .side-nav a {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--rule);
+    display: block;
+    transition: all 0.35s var(--ease-out);
+    position: relative;
+    text-decoration: none;
+  }
+  .side-nav a.active {
+    background: var(--accent);
+    transform: scale(1.3);
+  }
+  .side-nav a:hover {
+    background: var(--accent-light);
+    transform: scale(1.4);
+  }
+  .side-nav a .tooltip {
+    position: absolute;
+    right: 22px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--ink);
+    color: var(--cream);
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 5px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .side-nav a:hover .tooltip { opacity: 1; }
+
+  .page {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 0 28px;
+  }
+
+  .masthead {
+    padding: 72px 0 56px;
+    text-align: center;
+    position: relative;
+  }
+  .masthead::after {
+    content: '';
+    display: block;
+    width: 56px;
+    height: 3px;
+    background: var(--accent);
+    margin: 36px auto 0;
+    border-radius: 2px;
+  }
+  .masthead-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+    display: inline-block;
+  }
+  .masthead h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2.4rem, 6vw, 3.4rem);
+    font-weight: 800;
+    color: var(--ink);
+    line-height: 1.08;
+    letter-spacing: -1.2px;
+    margin-bottom: 16px;
+  }
+  .masthead .lead {
+    font-size: 1.08rem;
+    font-weight: 400;
+    color: var(--ink-muted);
+    max-width: 520px;
+    margin: 0 auto;
+    line-height: 1.65;
+  }
+  .masthead-meta {
+    margin-top: 24px;
+    display: flex;
+    justify-content: center;
+    gap: 28px;
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+  }
+  .masthead-meta span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity 0.7s var(--ease-out), transform 0.7s var(--ease-out);
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .section { padding: 48px 0 12px; }
+  .section-number {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--accent);
+    background: var(--accent-bg);
+    border: 1px solid var(--accent-border);
+    display: inline-block;
+    padding: 2px 12px;
+    border-radius: 100px;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+  h2 {
+    font-family: var(--font-display);
+    font-size: 1.65rem;
+    font-weight: 800;
+    color: var(--ink);
+    line-height: 1.2;
+    margin-bottom: 22px;
+    letter-spacing: -0.5px;
+    position: relative;
+    padding-bottom: 14px;
+  }
+  h2::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 36px;
+    height: 3px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+  h3 {
+    font-family: var(--font-display);
+    font-size: 1.12rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-top: 32px;
+    margin-bottom: 12px;
+  }
+  p { margin-bottom: 16px; }
+
+  .divider {
+    border: none;
+    height: 1px;
+    background: var(--rule-light);
+    margin: 40px 0;
+    position: relative;
+  }
+  .divider::after {
+    content: '\u25C6';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--cream);
+    padding: 0 12px;
+    color: var(--rule);
+    font-size: 0.6rem;
+  }
+
+  ul {
+    list-style: none;
+    margin: 10px 0 20px 0;
+  }
+  ul li {
+    position: relative;
+    padding-left: 22px;
+    margin-bottom: 10px;
+    line-height: 1.72;
+  }
+  ul li::before {
+    content: '';
+    position: absolute;
+    left: 2px;
+    top: 11px;
+    width: 6px; height: 6px;
+    border: 1.5px solid var(--accent);
+    border-radius: 50%;
+  }
+  ul li strong { color: var(--ink); font-weight: 600; }
+
+  .credit-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin: 22px 0 26px;
+  }
+  .cr-card {
+    background: #fff;
+    border: 1px solid var(--rule-light);
+    border-radius: 12px;
+    padding: 24px;
+    transition: transform 0.35s var(--ease-spring), box-shadow 0.35s var(--ease-out);
+    cursor: default;
+  }
+  .cr-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+  }
+  .cr-card-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    margin-bottom: 14px;
+  }
+  .cr-card-icon--earn { background: var(--green-bg); }
+  .cr-card-icon--use { background: var(--red-bg); }
+  .cr-card h4 {
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+  .cr-card p {
+    font-size: 0.88rem;
+    color: var(--ink-muted);
+    margin-bottom: 0;
+    line-height: 1.6;
+  }
+  .badge {
+    display: inline-block;
+    margin-top: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 100px;
+  }
+  .badge--earn { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+  .badge--use { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+  .badge--neutral { background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent-border); }
+  .badge--teal { background: var(--teal-bg); color: var(--teal); border: 1px solid var(--teal-border); }
+
+  .status-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    margin: 22px 0 26px;
+  }
+  .status-chip {
+    background: #fff;
+    border: 1px solid var(--rule-light);
+    border-radius: 10px;
+    padding: 16px 18px;
+    text-align: center;
+    transition: transform 0.3s var(--ease-spring), box-shadow 0.3s;
+  }
+  .status-chip:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+  .status-chip .code {
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+  .status-chip .meaning {
+    font-size: 0.75rem;
+    color: var(--ink-muted);
+    line-height: 1.4;
+  }
+  .status-chip .impact {
+    margin-top: 8px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .impact--plus { color: var(--green); }
+  .impact--minus { color: var(--red); }
+  .impact--none { color: var(--ink-faint); }
+
+  .meter-block {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin: 22px 0 26px;
+  }
+  .meter-item {
+    background: #fff;
+    border: 1px solid var(--rule-light);
+    border-radius: 12px;
+    padding: 22px 24px;
+    transition: transform 0.3s var(--ease-spring), box-shadow 0.3s;
+  }
+  .meter-item:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+  .meter-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+  .meter-label--green { color: var(--green); }
+  .meter-label--red { color: var(--red); }
+  .meter-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--rule-light);
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .meter-fill {
+    height: 100%;
+    border-radius: 3px;
+    width: 0%;
+    transition: width 1.2s var(--ease-out);
+  }
+  .meter-fill--green { background: var(--green); }
+  .meter-fill--red { background: var(--red); }
+  .meter-desc { font-size: 0.85rem; color: var(--ink-muted); line-height: 1.55; }
+
+  .formula-block {
+    background: #fff;
+    border: 1px solid var(--rule-light);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 10px 10px 0;
+    padding: 22px 26px;
+    margin: 20px 0 24px;
+    transition: box-shadow 0.3s;
+  }
+  .formula-block:hover { box-shadow: var(--shadow-md); }
+  .formula-label {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 8px;
+  }
+  .formula-expr {
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--ink);
+    line-height: 1.6;
+  }
+  .formula-expr .num { color: var(--accent); }
+  .formula-expr .sym { color: var(--ink-faint); }
+  .formula-expr .plus { color: var(--green); font-weight: 700; }
+  .formula-expr .minus { color: var(--red); font-weight: 700; }
+
+  .note {
+    background: var(--cream-dark);
+    border-radius: 10px;
+    padding: 18px 22px 18px 42px;
+    margin: 18px 0 22px;
+    font-size: 0.9rem;
+    color: var(--ink-muted);
+    line-height: 1.7;
+    position: relative;
+  }
+  .note::before {
+    content: '\2192';
+    position: absolute;
+    left: 18px;
+    top: 18px;
+    color: var(--accent);
+    font-size: 0.85rem;
+  }
+  .note strong { color: var(--ink-soft); }
+
+  .expandable {
+    background: #fff;
+    border: 1px solid var(--rule-light);
+    border-radius: 12px;
+    margin: 16px 0;
+    overflow: hidden;
+    transition: box-shadow 0.3s;
+  }
+  .expandable:hover { box-shadow: var(--shadow-sm); }
+  .expandable-header {
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+  }
+  .expandable-header:hover { background: var(--cream-dark); }
+  .expandable-header h4 {
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .expand-icon {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--cream-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: var(--ink-muted);
+    transition: transform 0.4s var(--ease-out), background 0.2s;
+    flex-shrink: 0;
+  }
+  .expandable.open .expand-icon {
+    transform: rotate(180deg);
+    background: var(--accent-bg);
+    color: var(--accent);
+  }
+  .expandable-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s var(--ease-out);
+  }
+  .expandable.open .expandable-content { max-height: 800px; }
+  .expandable-inner {
+    padding: 0 24px 22px;
+    font-size: 0.92rem;
+    color: var(--ink-muted);
+    line-height: 1.75;
+  }
+
+  .eval-table-wrap {
+    background: #fff;
+    border: 1px solid var(--rule-light);
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 22px 0 26px;
+    transition: box-shadow 0.3s;
+  }
+  .eval-table-wrap:hover { box-shadow: var(--shadow-md); }
+  .eval-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+  .eval-table thead th {
+    padding: 14px 20px;
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    background: var(--cream-dark);
+    border-bottom: 1px solid var(--rule-light);
+  }
+  .eval-table tbody td {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--rule-light);
+    color: var(--ink-soft);
+  }
+  .eval-table tbody tr:last-child td { border-bottom: none; }
+  .eval-table tbody tr { transition: background 0.2s; }
+  .eval-table tbody tr:hover { background: rgba(180,83,9,0.02); }
+  .eval-table .mono {
+    font-family: var(--font-mono);
+    font-size: 0.84rem;
+    color: var(--accent);
+  }
+
+  .holiday-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 18px 0 24px;
+  }
+  .holiday-item {
+    background: #fff;
+    border: 1px solid var(--rule-light);
+    border-radius: 8px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: transform 0.2s var(--ease-spring), box-shadow 0.2s;
+  }
+  .holiday-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+  .holiday-date {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--accent);
+    background: var(--accent-bg);
+    border: 1px solid var(--accent-border);
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .holiday-name {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    font-weight: 500;
+  }
+
+  .step-flow {
+    margin: 24px 0;
+    position: relative;
+  }
+  .step-flow::before {
+    content: '';
+    position: absolute;
+    left: 18px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--rule-light);
+  }
+  .step-item {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 24px;
+    position: relative;
+  }
+  .step-num {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+  .step-content {
+    padding-top: 6px;
+  }
+  .step-content h4 {
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+  .step-content p {
+    font-size: 0.88rem;
+    color: var(--ink-muted);
+    margin-bottom: 0;
+    line-height: 1.6;
+  }
+
+  .conclusion {
+    background: linear-gradient(135deg, var(--cream-dark) 0%, #fff 100%);
+    border: 1px solid var(--rule-light);
+    border-radius: 14px;
+    padding: 36px 32px;
+    margin: 10px 0 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .conclusion::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--teal));
+  }
+  .conclusion p { font-size: 0.95rem; margin-bottom: 14px; }
+  .conclusion p:last-child { margin-bottom: 0; }
+
+  .back-to-top {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--cream);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    box-shadow: var(--shadow-lg);
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 0.3s, transform 0.3s var(--ease-out), background 0.2s;
+    z-index: 100;
+  }
+  .back-to-top.visible { opacity: 1; transform: translateY(0); }
+  .back-to-top:hover { background: var(--accent); transform: translateY(-2px); }
+
+  .footer {
+    margin-top: 56px;
+    padding: 28px 0 48px;
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+    border-top: 1px solid var(--rule-light);
+  }
+  .footer-brand {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+    margin-bottom: 4px;
+  }
+
+  @media (max-width: 700px) {
+    .side-nav { display: none; }
+    .credit-cards, .meter-block, .holiday-list { grid-template-columns: 1fr; }
+    .status-grid { grid-template-columns: 1fr 1fr; }
+    .masthead { padding: 48px 0 40px; }
+    .masthead-meta { flex-direction: column; gap: 6px; }
+    .page { padding: 0 20px; }
+  }
+
+  @media print {
+    .progress-bar, .side-nav, .back-to-top { display: none; }
+    .page { max-width: 100%; padding: 20px; }
+    .reveal { opacity: 1; transform: none; }
+    .meter-fill { width: 100% !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<nav class="side-nav" id="sideNav">
+  <a href="#intro" data-section="intro"><span class="tooltip">Introduction</span></a>
+  <a href="#problem" data-section="problem"><span class="tooltip">Problem</span></a>
+  <a href="#input" data-section="input"><span class="tooltip">Input Format</span></a>
+  <a href="#statuses" data-section="statuses"><span class="tooltip">Status Values</span></a>
+  <a href="#holidays" data-section="holidays"><span class="tooltip">Holidays</span></a>
+  <a href="#logic" data-section="logic"><span class="tooltip">Processing Logic</span></a>
+  <a href="#formula" data-section="formula"><span class="tooltip">Formula</span></a>
+  <a href="#edge-cases" data-section="edge-cases"><span class="tooltip">Edge Cases</span></a>
+  <a href="#output" data-section="output"><span class="tooltip">Output</span></a>
+  <a href="#conclusion" data-section="conclusion"><span class="tooltip">Conclusion</span></a>
+</nav>
+
+<button class="back-to-top" id="backToTop" onclick="window.scrollTo({top:0})">&#8593;</button>
+
+<div class="page">
+
+  <header class="masthead reveal" id="top">
+    <div class="masthead-eyebrow">HR Automation &middot; Leave Management</div>
+    <h1>Leave Credit System</h1>
+    <p class="lead">An automated leave tracking engine that calculates leave credits from biometric attendance data &mdash; fairly, accurately, and without manual intervention.</p>
+    <div class="masthead-meta">
+      <span>&#9670; Technical Report</span>
+      <span>&#9670; 2026</span>
+      <span>&#9670; Head Office / Rohtak / Bhiwadi</span>
+    </div>
+  </header>
+
+  <hr class="divider">
+
+  <section class="section reveal" id="intro">
+    <span class="section-number">01</span>
+    <h2>Introduction</h2>
+    <p>The Leave Credit System automates the calculation of leave balances for employees based on their monthly biometric attendance records. It replaces error-prone manual tracking with a rule-based engine that consistently applies company policy.</p>
+    <p>The core principle is straightforward: employees earn leave credits when they work on holidays or weekly offs, and spend credits when they take leave on regular working days. The system tracks both sides of this equation and reports the net balance per employee.</p>
+  </section>
+
+  <hr class="divider">
+
+  <section class="section reveal" id="problem">
+    <span class="section-number">02</span>
+    <h2>Problem Statement</h2>
+    <p>In attendance management, leave credits naturally flow in two directions:</p>
+    <div class="credit-cards">
+      <div class="cr-card">
+        <div class="cr-card-icon cr-card-icon--earn">&#65291;</div>
+        <h4>Credit Earned</h4>
+        <p>Employee works on a Weekly Off or Company Holiday. Extra effort is rewarded with a future leave day.</p>
+        <span class="badge badge--earn">+1 Credit</span>
+      </div>
+      <div class="cr-card">
+        <div class="cr-card-icon cr-card-icon--use">&minus;</div>
+        <h4>Credit Used</h4>
+        <p>Employee takes leave (marked as COMP OFF or Absent in the attendance sheet) on a regular working day. A previously earned credit is consumed.</p>
+        <span class="badge badge--use">&minus;1 Credit</span>
+      </div>
+    </div>
+    <p>Without automation, HR teams manually cross-reference holiday calendars, weekly off schedules, and attendance logs &mdash; a process that is slow, inconsistent, and prone to disputes. This system eliminates that overhead entirely.</p>
+  </section>
+
+  <hr class="divider">
+
+  <section class="section reveal" id="input">
+    <span class="section-number">03</span>
+    <h2>Input Format</h2>
+    <p>The system accepts an Excel (.xlsx) or CSV attendance file exported from any standard biometric attendance system. The expected columns are:</p>
+
+    <div class="eval-table-wrap">
+      <table class="eval-table">
+        <thead>
+          <tr>
+            <th>Column</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Employee Code</strong></td>
+            <td>Unique identifier for each employee</td>
+          </tr>
+          <tr>
+            <td><strong>Employee Name</strong></td>
+            <td>Full name of the employee</td>
+          </tr>
+          <tr>
+            <td><strong>Date</strong></td>
+            <td>Date of attendance record (DD-MM-YYYY or YYYY-MM-DD)</td>
+          </tr>
+          <tr>
+            <td><strong>In Time / Out Time</strong></td>
+            <td>Clock-in and clock-out timestamps</td>
+          </tr>
+          <tr>
+            <td><strong>Working Hours</strong></td>
+            <td>Total hours worked (used to detect actual presence)</td>
+          </tr>
+          <tr>
+            <td><strong>Status</strong></td>
+            <td>Attendance status &mdash; Present, Weekly Off, COMP OFF, Absent, etc.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <strong>Auto-detection:</strong> The system automatically locates the header row even if it isn't the first row. It also handles both row-per-day and transposed (dates-as-columns) file layouts.
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <section class="section reveal" id="statuses">
+    <span class="section-number">04</span>
+    <h2>Status Values &amp; Impact</h2>
+    <p>Each attendance record carries a status that determines its credit impact. The system recognizes multiple aliases for each status type:</p>
+
+    <div class="status-grid">
+      <div class="status-chip">
+        <div class="code">P / Present</div>
+        <div class="meaning">Normal working day, employee present</div>
+        <div class="impact impact--none">No change</div>
+      </div>
+      <div class="status-chip">
+        <div class="code">WO / Weekly Off</div>
+        <div class="meaning">Paid weekly rest day</div>
+        <div class="impact impact--none">No change*</div>
+      </div>
+      <div class="status-chip">
+        <div class="code">CH / Holiday</div>
+        <div class="meaning">Company-declared holiday</div>
+        <div class="impact impact--none">No change*</div>
+      </div>
+      <div class="status-chip">
+        <div class="code">Present on WO</div>
+        <div class="meaning">Employee worked on a weekly off</div>
+        <div class="impact impact--plus">+1 Credit</div>
+      </div>
+      <div class="status-chip">
+        <div class="code">Present on CH</div>
+        <div class="meaning">Employee worked on a company holiday</div>
+        <div class="impact impact--plus">+1 Credit</div>
+      </div>
+      <div class="status-chip">
+        <div class="code">COMP OFF / Absent</div>
+        <div class="meaning">Employee on leave (marked as COMP OFF or Absent in sheet)</div>
+        <div class="impact impact--minus">&minus;1 Credit</div>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>Key rule:</strong> Both <strong>Absent</strong> and <strong>COMP OFF</strong> are status values in the attendance sheet that indicate the employee took leave. They are treated identically. A deduction of &minus;1 only applies if the day is a <strong>working day</strong> (not a Weekly Off or Company Holiday).
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <section class="section reveal" id="holidays">
+    <span class="section-number">05</span>
+    <h2>Company Holidays &mdash; 2026</h2>
+    <p>The following holidays are hardcoded for HEAD OFFICE / ROHTAK / BHIWADI locations. Dates falling on these days are exempt from credit deductions.</p>
+
+    <div class="holiday-list">
+      <div class="holiday-item">
+        <span class="holiday-date">01 Jan</span>
+        <span class="holiday-name">New Year</span>
+      </div>
+      <div class="holiday-item">
+        <span class="holiday-date">26 Jan</span>
+        <span class="holiday-name">Republic Day</span>
+      </div>
+      <div class="holiday-item">
+        <span class="holiday-date">04 Mar</span>
+        <span class="holiday-name">Holi</span>
+      </div>
+      <div class="holiday-item">
+        <span class="holiday-date">31 Mar</span>
+        <span class="holiday-name">Mahavir Jayanti</span>
+      </div>
+      <div class="holiday-item">
+        <span class="holiday-date">15 Aug</span>
+        <span class="holiday-name">Independence Day</span>
+      </div>
+      <div class="holiday-item">
+        <span class="holiday-date">28 Aug</span>
+        <span class="holiday-name">Raksha Bandhan</span>
+      </div>
+      <div class="holiday-item">
+        <span class="holiday-date">02 Oct</span>
+        <span class="holiday-name">Mahatma Gandhi Jayanti</span>
+      </div>
+      <div class="holiday-item">
+        <span class="holiday-date">20 Oct</span>
+        <span class="holiday-name">Dussehra</span>
+      </div>
+      <div class="holiday-item">
+        <span class="holiday-date">08 Nov</span>
+        <span class="holiday-name">Diwali</span>
+      </div>
+      <div class="holiday-item">
+        <span class="holiday-date">09 Nov</span>
+        <span class="holiday-name">Govardhan Pooja</span>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>Maintenance:</strong> If the holiday calendar changes year-over-year, update the <code style="font-family:var(--font-mono);font-size:0.85rem;background:var(--cream);padding:1px 6px;border-radius:3px;">COMPANY_HOLIDAYS</code> set in the processing script.
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <section class="section reveal" id="logic">
+    <span class="section-number">06</span>
+    <h2>Processing Logic</h2>
+    <p>The engine processes each attendance record through a six-step pipeline:</p>
+
+    <div class="step-flow">
+      <div class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Load Attendance File</h4>
+          <p>Read the Excel/CSV file, auto-detect the header row, normalize column names, and parse dates into a standard format.</p>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Classify Each Day</h4>
+          <p>For every attendance row, determine if the date is a Company Holiday, a Weekly Off (from status), or a regular Working Day.</p>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Detect Credits Earned (+1)</h4>
+          <p>If the day is a Weekly Off or Company Holiday AND the employee has non-zero working hours or a "Present" status, award +1 credit.</p>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>Detect Credits Used (&minus;1)</h4>
+          <p>If the status is COMP OFF or Absent (both indicate leave in the sheet) AND the day is a regular working day (not WO or CH), deduct &minus;1 credit.</p>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <h4>Aggregate Per Employee</h4>
+          <p>Group all records by Employee Code + Name. Sum earned credits and used credits separately for each employee.</p>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">6</div>
+        <div class="step-content">
+          <h4>Generate Report</h4>
+          <p>Output a formatted Excel file with a summary sheet and an optional day-by-day detail sheet.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <section class="section reveal" id="formula">
+    <span class="section-number">07</span>
+    <h2>Credit Formula</h2>
+    <p>The final leave credit balance is computed per employee using a simple additive formula:</p>
+
+    <div class="formula-block">
+      <div class="formula-label">Formula</div>
+      <div class="formula-expr">Leave Credits Left <span class="sym">=</span> <span class="plus">Credits Earned</span> <span class="sym">&minus;</span> <span class="minus">Credits Used</span></div>
+    </div>
+
+    <p>Where:</p>
+
+    <div class="meter-block">
+      <div class="meter-item">
+        <div class="meter-label meter-label--green">Credits Earned</div>
+        <div class="meter-bar"><div class="meter-fill meter-fill--green" data-width="85"></div></div>
+        <div class="meter-desc">Total days the employee worked on Weekly Offs or Company Holidays during the period.</div>
+      </div>
+      <div class="meter-item">
+        <div class="meter-label meter-label--red">Credits Used</div>
+        <div class="meter-bar"><div class="meter-fill meter-fill--red" data-width="65"></div></div>
+        <div class="meter-desc">Total days the employee took leave (marked as COMP OFF or Absent in the sheet) on regular working days.</div>
+      </div>
+    </div>
+
+    <div class="formula-block">
+      <div class="formula-label">Example</div>
+      <div class="formula-expr">Employee worked <span class="num">14</span> off-days <span class="sym">&minus;</span> took <span class="num">12</span> leaves <span class="sym">=</span> <span class="num">2</span> credits remaining</div>
+    </div>
+
+    <div class="note">
+      <strong>Negative balances:</strong> If credits used exceed credits earned, the balance goes negative. The report highlights negative balances in red to flag employees who have overdrawn their leave entitlement.
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <section class="section reveal" id="edge-cases">
+    <span class="section-number">08</span>
+    <h2>Edge Cases</h2>
+    <p>The system handles all common edge cases to ensure reliable output:</p>
+
+    <div class="expandable open" id="exp1">
+      <div class="expandable-header" onclick="toggleExpand('exp1')">
+        <h4>&#128737;&#65039; Leave Taken on a Holiday or Weekly Off</h4>
+        <span class="expand-icon">&#8964;</span>
+      </div>
+      <div class="expandable-content">
+        <div class="expandable-inner">
+          <p>If an employee's status shows COMP OFF or Absent but the date is a Company Holiday or Weekly Off, <strong>no deduction</strong> is applied. The day is already a non-working day &mdash; the leave status is treated as redundant.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="expandable" id="exp2">
+      <div class="expandable-header" onclick="toggleExpand('exp2')">
+        <h4>&#128197; Absent on a Holiday or Weekly Off</h4>
+        <span class="expand-icon">&#8964;</span>
+      </div>
+      <div class="expandable-content">
+        <div class="expandable-inner">
+          <p>Same treatment as above &mdash; <strong>no deduction</strong>. Being on leave on a day that's already an off-day carries no credit penalty.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="expandable" id="exp3">
+      <div class="expandable-header" onclick="toggleExpand('exp3')">
+        <h4>&#128260; Company Holiday + Weekly Off on Same Day</h4>
+        <span class="expand-icon">&#8964;</span>
+      </div>
+      <div class="expandable-content">
+        <div class="expandable-inner">
+          <p>Both flags are set, but the day is still counted as a single off-day. If the employee worked, they earn <strong>+1 credit</strong> (not +2). The system avoids double-counting.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="expandable" id="exp4">
+      <div class="expandable-header" onclick="toggleExpand('exp4')">
+        <h4>&#9888;&#65039; Unparseable Dates or Missing Data</h4>
+        <span class="expand-icon">&#8964;</span>
+      </div>
+      <div class="expandable-content">
+        <div class="expandable-inner">
+          <p>Rows with unparseable dates are skipped. Rows with missing Employee Code or Name are grouped under "UNKNOWN" and flagged in the report. Total/summary rows in the attendance file are automatically excluded.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="expandable" id="exp5">
+      <div class="expandable-header" onclick="toggleExpand('exp5')">
+        <h4>&#128202; Multi-Sheet or Multi-Month Files</h4>
+        <span class="expand-icon">&#8964;</span>
+      </div>
+      <div class="expandable-content">
+        <div class="expandable-inner">
+          <p>If the attendance file contains multiple sheets, all are processed. Records are deduplicated by Employee Code + Date to prevent double-counting across overlapping sheets.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <section class="section reveal" id="output">
+    <span class="section-number">09</span>
+    <h2>Output Report</h2>
+    <p>The system generates a professionally formatted Excel report with two sheets:</p>
+
+    <h3>Sheet 1 &mdash; Leave Credits Summary</h3>
+    <div class="eval-table-wrap">
+      <table class="eval-table">
+        <thead>
+          <tr>
+            <th>Column</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Employee Code</strong></td>
+            <td>Unique identifier from attendance data</td>
+          </tr>
+          <tr>
+            <td><strong>Employee Name</strong></td>
+            <td>Full name from attendance data</td>
+          </tr>
+          <tr>
+            <td><strong>Credits Earned</strong></td>
+            <td>Count of days worked on WO/Holiday <span class="badge badge--earn" style="font-size:0.6rem;margin:0;vertical-align:middle;">+1 each</span></td>
+          </tr>
+          <tr>
+            <td><strong>Credits Used</strong></td>
+            <td>Count of Comp Off / Absent on working days <span class="badge badge--use" style="font-size:0.6rem;margin:0;vertical-align:middle;">&minus;1 each</span></td>
+          </tr>
+          <tr>
+            <td><strong>Leave Credits Left</strong></td>
+            <td>Earned &minus; Used. Green if &ge; 0, red if negative.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Sheet 2 &mdash; Attendance Detail</h3>
+    <p>A row-by-row breakdown showing each date, the original status, whether it was a holiday or weekly off, the credit change (+1 / &minus;1 / 0), and the reason for any change. This provides full audit transparency.</p>
+
+    <div class="note">
+      <strong>Formatting:</strong> The report uses Arial 11pt throughout, bold headers with light blue fill, auto-fit column widths, and conditional coloring &mdash; green for positive balances, red for negative or overdrawn balances.
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <section class="section reveal" id="conclusion">
+    <span class="section-number">10</span>
+    <h2>Conclusion</h2>
+    <div class="conclusion">
+      <p>The Leave Credit System transforms a tedious, error-prone manual process into an automated, auditable, and policy-consistent workflow. By codifying the rules for credit earning and spending into a deterministic engine, it removes ambiguity from comp-off tracking.</p>
+      <p>Every decision the system makes &mdash; whether to award a credit, deduct one, or skip a row entirely &mdash; follows documented rules and is visible in the Attendance Detail sheet. This transparency eliminates disputes and builds trust between HR and employees.</p>
+      <p>The result is cleaner attendance records, faster month-end processing, and a reliable leave balance that both HR teams and employees can count on.</p>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-brand">Leave Credit System</div>
+    <p>Automated Comp-Off Tracker &middot; Technical Report &middot; 2026 &middot; One Group</p>
+  </footer>
+
+</div>
+
+<script>
+(function() {
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) entry.target.classList.add('visible');
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+  reveals.forEach(el => observer.observe(el));
+
+  const progressBar = document.getElementById('progressBar');
+  window.addEventListener('scroll', () => {
+    const scrollTop = window.scrollY;
+    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    progressBar.style.width = (scrollTop / docHeight) * 100 + '%';
+  });
+
+  const btn = document.getElementById('backToTop');
+  window.addEventListener('scroll', () => {
+    btn.classList.toggle('visible', window.scrollY > 500);
+  });
+
+  const sections = document.querySelectorAll('.section[id]');
+  const navLinks = document.querySelectorAll('.side-nav a');
+  const sectionMap = {};
+  navLinks.forEach(a => { sectionMap[a.dataset.section] = a; });
+
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(sec => {
+      if (sec.getBoundingClientRect().top <= 200) current = sec.id;
+    });
+    navLinks.forEach(a => a.classList.remove('active'));
+    if (current && sectionMap[current]) sectionMap[current].classList.add('active');
+  });
+
+  const meterFills = document.querySelectorAll('.meter-fill');
+  const meterObs = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        setTimeout(() => { entry.target.style.width = entry.target.dataset.width + '%'; }, 200);
+        meterObs.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.5 });
+  meterFills.forEach(el => meterObs.observe(el));
+})();
+
+function toggleExpand(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resume Scorer &mdash; Automated Applicant Ranking System</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,600,700&f[]=cabinet-grotesk@500,700,800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1c1917;
+    --ink-soft: #44403c;
+    --ink-muted: #78716c;
+    --ink-faint: #a8a29e;
+    --cream: #faf9f6;
+    --cream-dark: #f5f0eb;
+    --warm: #e7e0d8;
+    --accent: #b45309;
+    --accent-light: #d97706;
+    --accent-bg: rgba(180,83,9,0.06);
+    --accent-border: rgba(180,83,9,0.18);
+    --teal: #0f766e;
+    --teal-bg: rgba(15,118,110,0.06);
+    --teal-border: rgba(15,118,110,0.18);
+    --green: #15803d;
+    --green-bg: rgba(21,128,61,0.06);
+    --green-border: rgba(21,128,61,0.18);
+    --red: #b91c1c;
+    --red-bg: rgba(185,28,28,0.06);
+    --red-border: rgba(185,28,28,0.18);
+    --yellow: #a16207;
+    --yellow-bg: rgba(161,98,7,0.06);
+    --yellow-border: rgba(161,98,7,0.18);
+    --rule: #d6d3d1;
+    --rule-light: #e7e5e4;
+    --shadow-sm: 0 1px 3px rgba(28,25,23,0.04);
+    --shadow-md: 0 4px 20px rgba(28,25,23,0.06);
+    --shadow-lg: 0 12px 40px rgba(28,25,23,0.08);
+    --font-display: 'Cabinet Grotesk', 'Helvetica Neue', Helvetica, sans-serif;
+    --font-body: 'Satoshi', 'Helvetica Neue', Helvetica, sans-serif;
+    --font-mono: 'Source Code Pro', Consolas, monospace;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.75;
+    color: var(--ink-soft);
+    background: var(--cream);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background: rgba(180,83,9,0.15);
+    color: var(--ink);
+  }
+
+  .progress-bar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-light));
+    width: 0%;
+    z-index: 1000;
+    transition: width 0.1s linear;
+  }
+
+  .side-nav {
+    position: fixed;
+    right: 28px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .side-nav a {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--rule);
+    display: block;
+    transition: all 0.35s var(--ease-out);
+    position: relative;
+    text-decoration: none;
+  }
+  .side-nav a.active {
+    background: var(--accent);
+    transform: scale(1.3);
+  }
+  .side-nav a:hover {
+    background: var(--accent-light);
+    transform: scale(1.4);
+  }
+  .side-nav a .tooltip {
+    position: absolute;
+    right: 22px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--ink);
+    color: var(--cream);
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 5px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .side-nav a:hover .tooltip { opacity: 1; }
+
+  .page {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 0 28px;
+  }
+
+  .masthead {
+    padding: 72px 0 56px;
+    text-align: center;
+    position: relative;
+  }
+  .masthead::after {
+    content: '';
+    display: block;
+    width: 56px;
+    height: 3px;
+    background: var(--accent);
+    margin: 36px auto 0;
+    border-radius: 2px;
+  }
+  .masthead-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+    display: inline-block;
+  }
+  .masthead h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2.4rem, 6vw, 3.4rem);
+    font-weight: 800;
+    color: var(--ink);
+    line-height: 1.08;
+    letter-spacing: -1.2px;
+    margin-bottom: 16px;
+  }
+  .masthead .lead {
+    font-size: 1.08rem;
+    font-weight: 400;
+    color: var(--ink-muted);
+    max-width: 520px;
+    margin: 0 auto;
+    line-height: 1.65;
+  }
+  .masthead-meta {
+    margin-top: 24px;
+    display: flex;
+    justify-content: center;
+    gap: 28px;
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+  }
+  .masthead-meta span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity 0.7s var(--ease-out), transform 0.7s var(--ease-out);
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .section { padding: 48px 0 12px; }
+  .section-number {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--accent);
+    background: var(--accent-bg);
+    border: 1px solid var(--accent-border);
+    display: inline-block;
+    padding: 2px 12px;
+    border-radius: 100px;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+  h2 {
+    font-family: var(--font-display);
+    font-size: 1.65rem;
+    font-weight: 800;
+    color: var(--ink);
+    line-height: 1.2;
+    margin-bottom: 22px;
+    letter-spacing: -0.5px;
+    position: relative;
+    padding-bottom: 14px;
+  }
+  h2::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 36px;
+    height: 3px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+  h3 {
+    font-family: var(--font-display);
+    font-size: 1.12rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-top: 32px;
+    margin-bottom: 12px;
+  }
+  p { margin-bottom: 16px; }
+
+  .divider {
+    border: none;
+    height: 1px;
+    background: var(--rule-light);
+    margin: 40px 0;
+    position: relative;
+  }
+  .divider::after {
+    content: '\u25C6';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--cream);
+    padding: 0 12px;
+    color: var(--rule);
+    font-size: 0.6rem;
+  }
+
+  ul {
+    list-style: none;
+    margin: 10px 0 20px 0;
+  }
+  ul li {
+    position: relative;
+    padding-left: 22px;
+    margin-bottom: 10px;
+    line-height: 1.72;
+  }
+  ul li::before {
+    content: '';
+    position: absolute;
+    left: 2px;
+    top: 11px;
+    width: 6px; height: 6px;
+    border: 1.5px solid var(--accent);
+    border-radius: 50%;
+  }
+  ul li strong { color: var(--ink); font-weight: 600; }
+
+  .credit-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin: 22px 0 26px;
+  }
+  .cr-card {
+    background: #fff;
+    border: 1px solid var(--rule-light);
+    border-radius: 12px;
+    padding: 24px;
+    transition: transform 0.35s var(--ease-spring), box-shadow 0.35s var(--ease-out);
+    cursor: default;
+  }
+  .cr-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+  }
+  .cr-card-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    margin-bottom: 14px;
+  }
+  .cr-card-icon--earn { background: var(--green-bg); }
+  .cr-card-icon--use { background: var(--red-bg); }
+  .cr-card-icon--teal { background: var(--teal-bg); }
+  .cr-card-icon--accent { background: var(--accent-bg); }
+  .cr-card h4 {
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+  .cr-card p {
+    font-size: 0.88rem;
+    color: var(--ink-muted);
+    margin-bottom: 0;
+    line-height: 1.6;
+  }
+  .badge {
+    display: inline-block;
+    margin-top: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 100px;
+  }
+  .badge--earn { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+  .badge--use { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+  .badge--neutral { background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent-border); }
+  .badge--teal { background: var(--teal-bg); color: var(--teal); border: 1px solid var(--teal-border); }
+  .badge--yellow { background: var(--yellow-bg); color: var(--yellow); border: 1px solid var(--yellow-border); }
+
+  .weight-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin: 22px 0 26px;
+  }
+  .w-card {
+    background: #fff;
+    border: 1px solid var(--rule-light);
+    border-radius: 12px;
+    padding: 22px 24px;
+    transition: transform 0.35s var(--ease-spring), box-shadow 0.35s var(--ease-out);
+    cursor: default;
+    position: relative;
+    overflow: hidden;
+  }
+  .w-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+  }
+  .w-card-pct {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .w-card h4 {
+    font-family: var(--font-display);
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+  .w-card p {
+    font-size: 0.84rem;
+    color: var(--ink-muted);
+    margin-bottom: 0;
+    line-height: 1.55;
+  }
+
+  .status-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    margin: 22px 0 26px;
+  }
+  .status-chip {
+    background: #fff;
+    border: 1px solid var(--rule-light);
+    border-radius: 10px;
+    padding: 16px 18px;
+    text-align: center;
+    transition: transform 0.3s var(--ease-spring), box-shadow 0.3s;
+  }
+  .status-chip:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+  .status-chip .code {
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+  .status-chip .meaning {
+    font-size: 0.75rem;
+    color: var(--ink-muted);
+    line-height: 1.4;
+  }
+  .status-chip .impact {
+    margin-top: 8px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .impact--plus { color: var(--green); }
+  .impact--minus { color: var(--red); }
+  .impact--none { color: var(--ink-faint); }
+
+  .meter-block {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin: 22px 0 26px;
+  }
+  .meter-item {
+    background: #fff;
+    border: 1px solid var(--rule-light);
+    border-radius: 12px;
+    padding: 22px 24px;
+    transition: transform 0.3s var(--ease-spring), box-shadow 0.3s;
+  }
+  .meter-item:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+  .meter-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+  .meter-label--green { color: var(--green); }
+  .meter-label--red { color: var(--red); }
+  .meter-label--accent { color: var(--accent); }
+  .meter-label--teal { color: var(--teal); }
+  .meter-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--rule-light);
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .meter-fill {
+    height: 100%;
+    border-radius: 3px;
+    width: 0%;
+    transition: width 1.2s var(--ease-out);
+  }
+  .meter-fill--green { background: var(--green); }
+  .meter-fill--red { background: var(--red); }
+  .meter-fill--accent { background: var(--accent); }
+  .meter-fill--teal { background: var(--teal); }
+  .meter-desc { font-size: 0.85rem; color: var(--ink-muted); line-height: 1.55; }
+
+  .formula-block {
+    background: #fff;
+    border: 1px solid var(--rule-light);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 10px 10px 0;
+    padding: 22px 26px;
+    margin: 20px 0 24px;
+    transition: box-shadow 0.3s;
+  }
+  .formula-block:hover { box-shadow: var(--shadow-md); }
+  .formula-label {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 8px;
+  }
+  .formula-expr {
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--ink);
+    line-height: 1.6;
+  }
+  .formula-expr .num { color: var(--accent); }
+  .formula-expr .sym { color: var(--ink-faint); }
+  .formula-expr .plus { color: var(--green); font-weight: 700; }
+  .formula-expr .minus { color: var(--red); font-weight: 700; }
+
+  .note {
+    background: var(--cream-dark);
+    border-radius: 10px;
+    padding: 18px 22px 18px 42px;
+    margin: 18px 0 22px;
+    font-size: 0.9rem;
+    color: var(--ink-muted);
+    line-height: 1.7;
+    position: relative;
+  }
+  .note::before {
+    content: '\2192';
+    position: absolute;
+    left: 18px;
+    top: 18px;
+    color: var(--accent);
+    font-size: 0.85rem;
+  }
+  .note strong { color: var(--ink-soft); }
+
+  .expandable {
+    background: #fff;
+    border: 1px solid var(--rule-light);
+    border-radius: 12px;
+    margin: 16px 0;
+    overflow: hidden;
+    transition: box-shadow 0.3s;
+  }
+  .expandable:hover { box-shadow: var(--shadow-sm); }
+  .expandable-header {
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+  }
+  .expandable-header:hover { background: var(--cream-dark); }
+  .expandable-header h4 {
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .expand-icon {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--cream-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: var(--ink-muted);
+    transition: transform 0.4s var(--ease-out), background 0.2s;
+    flex-shrink: 0;
+  }
+  .expandable.open .expand-icon {
+    transform: rotate(180deg);
+    background: var(--accent-bg);
+    color: var(--accent);
+  }
+  .expandable-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s var(--ease-out);
+  }
+  .expandable.open .expandable-content { max-height: 800px; }
+  .expandable-inner {
+    padding: 0 24px 22px;
+    font-size: 0.92rem;
+    color: var(--ink-muted);
+    line-height: 1.75;
+  }
+
+  .eval-table-wrap {
+    background: #fff;
+    border: 1px solid var(--rule-light);
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 22px 0 26px;
+    transition: box-shadow 0.3s;
+  }
+  .eval-table-wrap:hover { box-shadow: var(--shadow-md); }
+  .eval-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+  .eval-table thead th {
+    padding: 14px 20px;
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    background: var(--cream-dark);
+    border-bottom: 1px solid var(--rule-light);
+  }
+  .eval-table tbody td {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--rule-light);
+    color: var(--ink-soft);
+  }
+  .eval-table tbody tr:last-child td { border-bottom: none; }
+  .eval-table tbody tr { transition: background 0.2s; }
+  .eval-table tbody tr:hover { background: rgba(180,83,9,0.02); }
+  .eval-table .mono {
+    font-family: var(--font-mono);
+    font-size: 0.84rem;
+    color: var(--accent);
+  }
+
+  .step-flow {
+    margin: 24px 0;
+    position: relative;
+  }
+  .step-flow::before {
+    content: '';
+    position: absolute;
+    left: 18px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--rule-light);
+  }
+  .step-item {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 24px;
+    position: relative;
+  }
+  .step-num {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+  .step-content {
+    padding-top: 6px;
+  }
+  .step-content h4 {
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+  .step-content p {
+    font-size: 0.88rem;
+    color: var(--ink-muted);
+    margin-bottom: 0;
+    line-height: 1.6;
+  }
+
+  .score-bands {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    margin: 22px 0 26px;
+  }
+  .score-band {
+    background: #fff;
+    border: 1px solid var(--rule-light);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    transition: transform 0.3s var(--ease-spring), box-shadow 0.3s;
+  }
+  .score-band:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+  .score-band .band-icon { font-size: 1.4rem; margin-bottom: 8px; }
+  .score-band .band-range {
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .score-band .band-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  .band--green .band-range { color: var(--green); }
+  .band--green .band-label { color: var(--green); }
+  .band--yellow .band-range { color: var(--yellow); }
+  .band--yellow .band-label { color: var(--yellow); }
+  .band--red .band-range { color: var(--red); }
+  .band--red .band-label { color: var(--red); }
+
+  .conclusion {
+    background: linear-gradient(135deg, var(--cream-dark) 0%, #fff 100%);
+    border: 1px solid var(--rule-light);
+    border-radius: 14px;
+    padding: 36px 32px;
+    margin: 10px 0 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .conclusion::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--teal));
+  }
+  .conclusion p { font-size: 0.95rem; margin-bottom: 14px; }
+  .conclusion p:last-child { margin-bottom: 0; }
+
+  .back-to-top {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--cream);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    box-shadow: var(--shadow-lg);
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 0.3s, transform 0.3s var(--ease-out), background 0.2s;
+    z-index: 100;
+  }
+  .back-to-top.visible { opacity: 1; transform: translateY(0); }
+  .back-to-top:hover { background: var(--accent); transform: translateY(-2px); }
+
+  .footer {
+    margin-top: 56px;
+    padding: 28px 0 48px;
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+    border-top: 1px solid var(--rule-light);
+  }
+  .footer-brand {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+    margin-bottom: 4px;
+  }
+
+  @media (max-width: 700px) {
+    .side-nav { display: none; }
+    .credit-cards, .meter-block, .weight-cards { grid-template-columns: 1fr; }
+    .status-grid, .score-bands { grid-template-columns: 1fr 1fr; }
+    .masthead { padding: 48px 0 40px; }
+    .masthead-meta { flex-direction: column; gap: 6px; }
+    .page { padding: 0 20px; }
+  }
+
+  @media print {
+    .progress-bar, .side-nav, .back-to-top { display: none; }
+    .page { max-width: 100%; padding: 20px; }
+    .reveal { opacity: 1; transform: none; }
+    .meter-fill { width: 100% !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<nav class="side-nav" id="sideNav">
+  <a href="#intro" data-section="intro"><span class="tooltip">Introduction</span></a>
+  <a href="#problem" data-section="problem"><span class="tooltip">Problem</span></a>
+  <a href="#input" data-section="input"><span class="tooltip">Input Files</span></a>
+  <a href="#jd-parsing" data-section="jd-parsing"><span class="tooltip">JD Parsing</span></a>
+  <a href="#scoring" data-section="scoring"><span class="tooltip">Scoring Model</span></a>
+  <a href="#logic" data-section="logic"><span class="tooltip">Processing Logic</span></a>
+  <a href="#formula" data-section="formula"><span class="tooltip">Formula</span></a>
+  <a href="#edge-cases" data-section="edge-cases"><span class="tooltip">Edge Cases</span></a>
+  <a href="#output" data-section="output"><span class="tooltip">Output</span></a>
+  <a href="#conclusion" data-section="conclusion"><span class="tooltip">Conclusion</span></a>
+</nav>
+
+<button class="back-to-top" id="backToTop" onclick="window.scrollTo({top:0})">&#8593;</button>
+
+<div class="page">
+
+  <header class="masthead reveal" id="top">
+    <div class="masthead-eyebrow">HR Automation &middot; Recruitment</div>
+    <h1>Resume Scorer</h1>
+    <p class="lead">An automated applicant ranking engine that scores resumes against a Job Description &mdash; consistently, transparently, and without manual shortlisting overhead.</p>
+    <div class="masthead-meta">
+      <span>&#9670; Technical Report</span>
+      <span>&#9670; 2026</span>
+      <span>&#9670; One Group &mdash; HR Operations</span>
+    </div>
+  </header>
+
+  <hr class="divider">
+
+  <section class="section reveal" id="intro">
+    <span class="section-number">01</span>
+    <h2>Introduction</h2>
+    <p>The Resume Scorer automates the first stage of recruitment &mdash; screening and ranking applicants against a Job Description (JD). It replaces the slow, subjective process of manually reading every resume with a rule-based scoring engine that applies consistent evaluation criteria to every candidate.</p>
+    <p>The core principle is straightforward: HR uploads a set of resumes and one JD file. The system reads everything directly, extracts requirements from the JD, matches each resume against those requirements, scores every applicant out of 100, and returns a ranked Excel scorecard.</p>
+  </section>
+
+  <hr class="divider">
+
+  <section class="section reveal" id="problem">
+    <span class="section-number">02</span>
+    <h2>Problem Statement</h2>
+    <p>In resume screening, two competing needs must be balanced:</p>
+    <div class="credit-cards">
+      <div class="cr-card">
+        <div class="cr-card-icon cr-card-icon--earn">&#9201;</div>
+        <h4>Speed</h4>
+        <p>HR teams receive dozens or hundreds of resumes per opening. Manually reading and comparing each one is time-consuming and delays the hiring pipeline.</p>
+        <span class="badge badge--neutral">Bottleneck</span>
+      </div>
+      <div class="cr-card">
+        <div class="cr-card-icon cr-card-icon--use">&#9878;</div>
+        <h4>Consistency</h4>
+        <p>Different reviewers apply different standards. A candidate rated "strong" by one screener may be passed over by another. Subjective evaluation leads to inconsistent shortlists.</p>
+        <span class="badge badge--neutral">Risk</span>
+      </div>
+    </div>
+    <p>Without automation, the screening process is a manual cross-referencing exercise &mdash; checking skills, experience, education, and titles across every resume against the JD. The Resume Scorer eliminates this overhead by codifying the evaluation criteria into a deterministic, repeatable scoring model.</p>
+  </section>
+
+  <hr class="divider">
+
+  <section class="section reveal" id="input">
+    <span class="section-number">03</span>
+    <h2>Input Files</h2>
+    <p>The system accepts two types of uploaded files &mdash; one Job Description and one or more resumes. Both PDF and DOCX formats are supported.</p>
+
+    <h3>File Identification</h3>
+    <div class="eval-table-wrap">
+      <table class="eval-table">
+        <thead>
+          <tr>
+            <th>File Type</th>
+            <th>How It's Detected</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Job Description</strong></td>
+            <td>Filename contains "jd", "job description", or "role". Only one JD file is expected per run.</td>
+          </tr>
+          <tr>
+            <td><strong>Resumes</strong></td>
+            <td>All remaining <code style="font-family:var(--font-mono);font-size:0.85rem;background:var(--cream);padding:1px 6px;border-radius:3px;">.pdf</code> / <code style="font-family:var(--font-mono);font-size:0.85rem;background:var(--cream);padding:1px 6px;border-radius:3px;">.docx</code> files are treated as resumes automatically.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Data Extracted from Each Resume</h3>
+    <div class="eval-table-wrap">
+      <table class="eval-table">
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Extraction Method</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Applicant Name</strong></td>
+            <td>Detected from the first 5 lines of the resume, or a "Name:" label. Falls back to filename if not found.</td>
+          </tr>
+          <tr>
+            <td><strong>Skills</strong></td>
+            <td>Keywords extracted from skills sections, summary, and body text</td>
+          </tr>
+          <tr>
+            <td><strong>Experience</strong></td>
+            <td>Years of experience and past job titles parsed from work history</td>
+          </tr>
+          <tr>
+            <td><strong>Education</strong></td>
+            <td>Degrees, certifications, and fields of study</td>
+          </tr>
+          <tr>
+            <td><strong>Industry</strong></td>
+            <td>Domain inferred from employer names and job descriptions</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <strong>Scanned PDFs:</strong> If extracted text is under 100 characters, the resume is flagged as <em>"Unable to extract &mdash; possibly scanned"</em> and assigned a score of N/A.
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <section class="section reveal" id="jd-parsing">
+    <span class="section-number">04</span>
+    <h2>JD Parsing &amp; Requirement Tiers</h2>
+    <p>The Job Description is parsed into individual requirements, each assigned a priority tier based on signal words found in the text:</p>
+
+    <div class="status-grid">
+      <div class="status-chip">
+        <div class="code">Must-Have</div>
+        <div class="meaning">must, required, mandatory, essential, minimum, necessary</div>
+        <div class="impact impact--plus">Weight: 3&times;</div>
+      </div>
+      <div class="status-chip">
+        <div class="code">Should-Have</div>
+        <div class="meaning">should, preferred, expected, ideally, strongly preferred</div>
+        <div class="impact" style="color:var(--accent);">Weight: 2&times;</div>
+      </div>
+      <div class="status-chip">
+        <div class="code">Nice-to-Have</div>
+        <div class="meaning">optional, nice to have, bonus, plus, desired, advantageous</div>
+        <div class="impact impact--none">Weight: 1&times;</div>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>Default tier:</strong> If no signal words are found for a requirement, it defaults to <strong>Should-Have (weight 2&times;)</strong>. This ensures every requirement contributes to the score.
+    </div>
+
+    <h3>Requirement Clusters</h3>
+    <p>Requirements are grouped into five clusters for transparent, category-level scoring:</p>
+
+    <div class="eval-table-wrap">
+      <table class="eval-table">
+        <thead>
+          <tr>
+            <th>Cluster</th>
+            <th>What It Covers</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Technical Skills</strong></td>
+            <td>Tools, languages, platforms, software (e.g. MS Excel, ERP, SAP)</td>
+          </tr>
+          <tr>
+            <td><strong>Domain Knowledge</strong></td>
+            <td>Industry-specific expertise (e.g. real estate, construction, supply chain)</td>
+          </tr>
+          <tr>
+            <td><strong>Experience</strong></td>
+            <td>Years of experience, seniority level, past roles held</td>
+          </tr>
+          <tr>
+            <td><strong>Education</strong></td>
+            <td>Degrees, certifications, licenses (e.g. MBA, B.Tech)</td>
+          </tr>
+          <tr>
+            <td><strong>Soft Skills</strong></td>
+            <td>Communication, leadership, teamwork, negotiation ability</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <section class="section reveal" id="scoring">
+    <span class="section-number">05</span>
+    <h2>Scoring Model</h2>
+    <p>Each resume is scored out of 100 using four weighted categories. The tier weights from the JD (Must / Should / Nice) are applied on top of these category scores to produce the final result.</p>
+
+    <div class="weight-cards">
+      <div class="w-card">
+        <div class="w-card-pct">46%</div>
+        <h4>Keyword &amp; Skill Match</h4>
+        <p>Overlap of skills, tools, and competencies between the resume and JD requirements.</p>
+      </div>
+      <div class="w-card">
+        <div class="w-card-pct">24%</div>
+        <h4>Experience Match</h4>
+        <p>Years of experience, domain relevance, and alignment with the JD's minimum requirement.</p>
+      </div>
+      <div class="w-card">
+        <div class="w-card-pct">15%</div>
+        <h4>Title / Role Alignment</h4>
+        <p>How closely the candidate's past job titles match the JD role (e.g. "Purchase Manager" vs "Buyer").</p>
+      </div>
+      <div class="w-card">
+        <div class="w-card-pct">15%</div>
+        <h4>Education Match</h4>
+        <p>Degree, field of study, and relevant certifications compared to JD preferences.</p>
+      </div>
+    </div>
+
+    <h3>Score Bands</h3>
+    <p>Final scores are classified into three bands with conditional formatting in the output report:</p>
+
+    <div class="score-bands">
+      <div class="score-band band--green">
+        <div class="band-icon">&#128994;</div>
+        <div class="band-range">70 &ndash; 100</div>
+        <div class="band-label">Strong Match</div>
+      </div>
+      <div class="score-band band--yellow">
+        <div class="band-icon">&#128993;</div>
+        <div class="band-range">40 &ndash; 69</div>
+        <div class="band-label">Partial Match</div>
+      </div>
+      <div class="score-band band--red">
+        <div class="band-icon">&#128308;</div>
+        <div class="band-range">0 &ndash; 39</div>
+        <div class="band-label">Poor Match</div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <section class="section reveal" id="logic">
+    <span class="section-number">06</span>
+    <h2>Processing Logic</h2>
+    <p>The engine processes each scoring run through a six-step pipeline:</p>
+
+    <div class="step-flow">
+      <div class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Locate Uploaded Files</h4>
+          <p>Scan the uploads directory, separate files into one JD and one or more resumes based on filename conventions.</p>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Extract JD Text</h4>
+          <p>Read the Job Description file (DOCX via python-docx, PDF via pdftotext) and extract the full text content.</p>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Parse JD into Weighted Requirements</h4>
+          <p>Identify each requirement, assign a priority tier (Must / Should / Nice) based on signal words, and group into clusters.</p>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>Extract Resume Text</h4>
+          <p>Read each resume file, extract the applicant's name from the first few lines, and parse out skills, experience, education, and industry.</p>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <h4>Score Each Resume</h4>
+          <p>Evaluate every resume across the four scoring categories (Skills 46%, Experience 24%, Title 15%, Education 15%), applying JD tier weights on top.</p>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">6</div>
+        <div class="step-content">
+          <h4>Generate Ranked Report</h4>
+          <p>Output a formatted Excel file sorted by final score (descending), with conditional color formatting and per-category breakdowns.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <section class="section reveal" id="formula">
+    <span class="section-number">07</span>
+    <h2>Scoring Formula</h2>
+    <p>The final score per applicant is computed as a weighted sum of four category scores:</p>
+
+    <div class="formula-block">
+      <div class="formula-label">Formula</div>
+      <div class="formula-expr">Final Score <span class="sym">=</span> (<span class="plus">Skill</span> <span class="sym">&times;</span> <span class="num">0.46</span>) <span class="sym">+</span> (<span class="plus">Experience</span> <span class="sym">&times;</span> <span class="num">0.24</span>) <span class="sym">+</span> (<span class="plus">Title</span> <span class="sym">&times;</span> <span class="num">0.15</span>) <span class="sym">+</span> (<span class="plus">Education</span> <span class="sym">&times;</span> <span class="num">0.15</span>)</div>
+    </div>
+
+    <p>Where each category score is itself a weighted match against JD requirements:</p>
+
+    <div class="meter-block">
+      <div class="meter-item">
+        <div class="meter-label meter-label--accent">Skill Match (46%)</div>
+        <div class="meter-bar"><div class="meter-fill meter-fill--accent" data-width="90"></div></div>
+        <div class="meter-desc">Overlap of keywords, tools, and competencies between resume and JD. Must-have skills carry 3&times; weight.</div>
+      </div>
+      <div class="meter-item">
+        <div class="meter-label meter-label--teal">Experience (24%)</div>
+        <div class="meter-bar"><div class="meter-fill meter-fill--teal" data-width="75"></div></div>
+        <div class="meter-desc">Years of experience compared to the JD minimum. Domain relevance (e.g. construction industry) provides bonus points.</div>
+      </div>
+    </div>
+
+    <div class="formula-block">
+      <div class="formula-label">Example</div>
+      <div class="formula-expr">Skill <span class="num">72</span> <span class="sym">&times;</span> 0.46 <span class="sym">+</span> Experience <span class="num">80</span> <span class="sym">&times;</span> 0.24 <span class="sym">+</span> Title <span class="num">100</span> <span class="sym">&times;</span> 0.15 <span class="sym">+</span> Education <span class="num">60</span> <span class="sym">&times;</span> 0.15 <span class="sym">=</span> <span class="num">76.3</span></div>
+    </div>
+
+    <div class="note">
+      <strong>Tier weighting:</strong> Within the Skill Match category, must-have requirements (weight 3&times;) contribute proportionally more than nice-to-have requirements (weight 1&times;). This ensures critical qualifications dominate the score.
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <section class="section reveal" id="edge-cases">
+    <span class="section-number">08</span>
+    <h2>Edge Cases</h2>
+    <p>The system handles all common edge cases to ensure reliable output:</p>
+
+    <div class="expandable open" id="exp1">
+      <div class="expandable-header" onclick="toggleExpand('exp1')">
+        <h4>&#128269; Cannot Identify the JD File</h4>
+        <span class="expand-icon">&#8964;</span>
+      </div>
+      <div class="expandable-content">
+        <div class="expandable-inner">
+          <p>If no file has "jd", "job description", or "role" in its name, the system pauses and asks the user: <em>"Which file is the Job Description?"</em> before proceeding.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="expandable" id="exp2">
+      <div class="expandable-header" onclick="toggleExpand('exp2')">
+        <h4>&#128196; Scanned / Image-Only PDF Resume</h4>
+        <span class="expand-icon">&#8964;</span>
+      </div>
+      <div class="expandable-content">
+        <div class="expandable-inner">
+          <p>If the extracted text from a PDF resume is under 100 characters, it is likely a scanned image. The resume is flagged as <strong>"Unable to extract &mdash; possibly scanned"</strong> and scored as N/A. It still appears in the report for transparency.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="expandable" id="exp3">
+      <div class="expandable-header" onclick="toggleExpand('exp3')">
+        <h4>&#129300; Applicant Name Not Found</h4>
+        <span class="expand-icon">&#8964;</span>
+      </div>
+      <div class="expandable-content">
+        <div class="expandable-inner">
+          <p>If no name is found in the first five lines of the resume or in a "Name:" label, the system falls back to using the <strong>filename</strong> (e.g. "resume3.pdf") as the applicant name in the report.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="expandable" id="exp4">
+      <div class="expandable-header" onclick="toggleExpand('exp4')">
+        <h4>&#9999;&#65039; No Priority Keywords in the JD</h4>
+        <span class="expand-icon">&#8964;</span>
+      </div>
+      <div class="expandable-content">
+        <div class="expandable-inner">
+          <p>If no signal words like "required", "preferred", or "bonus" are detected, all requirements default to <strong>Should-Have (weight 2&times;)</strong>. This ensures the scoring model still functions normally.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="expandable" id="exp5">
+      <div class="expandable-header" onclick="toggleExpand('exp5')">
+        <h4>&#128194; Duplicate Filenames</h4>
+        <span class="expand-icon">&#8964;</span>
+      </div>
+      <div class="expandable-content">
+        <div class="expandable-inner">
+          <p>If multiple files share the same name, the system appends a numeric suffix &mdash; e.g. <code style="font-family:var(--font-mono);font-size:0.85rem;background:var(--cream);padding:1px 6px;border-radius:3px;">resume (2)</code>, <code style="font-family:var(--font-mono);font-size:0.85rem;background:var(--cream);padding:1px 6px;border-radius:3px;">resume (3)</code> &mdash; to avoid confusion in the output report.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="expandable" id="exp6">
+      <div class="expandable-header" onclick="toggleExpand('exp6')">
+        <h4>&#127760; Non-English Resume</h4>
+        <span class="expand-icon">&#8964;</span>
+      </div>
+      <div class="expandable-content">
+        <div class="expandable-inner">
+          <p>The system attempts to score non-English resumes using keyword matching, but flags the score with a <strong>"Low confidence"</strong> note in the report cell. HR should review these manually.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="expandable" id="exp7">
+      <div class="expandable-header" onclick="toggleExpand('exp7')">
+        <h4>&#128203; Only One File Uploaded</h4>
+        <span class="expand-icon">&#8964;</span>
+      </div>
+      <div class="expandable-content">
+        <div class="expandable-inner">
+          <p>If only a single file is uploaded, the system asks: <em>"Is this a resume or the JD?"</em> and requests the missing counterpart before proceeding.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <section class="section reveal" id="output">
+    <span class="section-number">09</span>
+    <h2>Output Report</h2>
+    <p>The system generates a professionally formatted Excel report saved as <code style="font-family:var(--font-mono);font-size:0.85rem;background:var(--cream);padding:1px 6px;border-radius:3px;">resume_scores.xlsx</code>:</p>
+
+    <h3>Sheet 1 &mdash; Resume Scores</h3>
+    <div class="eval-table-wrap">
+      <table class="eval-table">
+        <thead>
+          <tr>
+            <th>Column</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Rank</strong></td>
+            <td>Position in the ranked list (1 = highest score)</td>
+          </tr>
+          <tr>
+            <td><strong>Applicant Name</strong></td>
+            <td>Full name extracted from the resume</td>
+          </tr>
+          <tr>
+            <td><strong>Final Score (/100)</strong></td>
+            <td>Weighted composite score with conditional color <span class="badge badge--earn" style="font-size:0.6rem;margin:0;vertical-align:middle;">&#128994; 70+</span> <span class="badge badge--yellow" style="font-size:0.6rem;margin:0;vertical-align:middle;">&#128993; 40&ndash;69</span> <span class="badge badge--use" style="font-size:0.6rem;margin:0;vertical-align:middle;">&#128308; 0&ndash;39</span></td>
+          </tr>
+          <tr>
+            <td><strong>Skill Match (46%)</strong></td>
+            <td>Category score for keyword and competency overlap</td>
+          </tr>
+          <tr>
+            <td><strong>Experience (24%)</strong></td>
+            <td>Category score for years and domain relevance</td>
+          </tr>
+          <tr>
+            <td><strong>Title Alignment (15%)</strong></td>
+            <td>Category score for role/title match</td>
+          </tr>
+          <tr>
+            <td><strong>Education (15%)</strong></td>
+            <td>Category score for degree and certification match</td>
+          </tr>
+          <tr>
+            <td><strong>Years of Exp</strong></td>
+            <td>Raw years of experience parsed from the resume</td>
+          </tr>
+          <tr>
+            <td><strong>Industry</strong></td>
+            <td>Domain/industry inferred from the candidate's background</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <strong>Formatting:</strong> The report uses Arial 10&ndash;11pt throughout, bold headers with dark blue fill and white text, auto-filter on all columns, centered alignment, thin borders, and conditional coloring &mdash; green for strong matches, yellow for partial, and red for poor matches.
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <section class="section reveal" id="conclusion">
+    <span class="section-number">10</span>
+    <h2>Conclusion</h2>
+    <div class="conclusion">
+      <p>The Resume Scorer transforms the tedious, subjective process of manual resume screening into an automated, transparent, and consistently applied evaluation workflow. By codifying JD requirements into weighted tiers and scoring resumes across four distinct categories, it removes ambiguity from the shortlisting process.</p>
+      <p>Every decision the system makes &mdash; which skills carry the most weight, how experience is compared, how titles are matched &mdash; follows documented rules and produces a per-category breakdown visible in the output report. This transparency builds trust between HR teams and hiring managers.</p>
+      <p>The result is faster screening cycles, fairer candidate evaluation, and a ranked scorecard that both recruiters and department heads can rely on to make informed hiring decisions.</p>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-brand">Resume Scorer</div>
+    <p>Automated Applicant Ranking &middot; Technical Report &middot; 2026 &middot; One Group</p>
+  </footer>
+
+</div>
+
+<script>
+(function() {
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) entry.target.classList.add('visible');
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+  reveals.forEach(el => observer.observe(el));
+
+  const progressBar = document.getElementById('progressBar');
+  window.addEventListener('scroll', () => {
+    const scrollTop = window.scrollY;
+    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    progressBar.style.width = (scrollTop / docHeight) * 100 + '%';
+  });
+
+  const btn = document.getElementById('backToTop');
+  window.addEventListener('scroll', () => {
+    btn.classList.toggle('visible', window.scrollY > 500);
+  });
+
+  const sections = document.querySelectorAll('.section[id]');
+  const navLinks = document.querySelectorAll('.side-nav a');
+  const sectionMap = {};
+  navLinks.forEach(a => { sectionMap[a.dataset.section] = a; });
+
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(sec => {
+      if (sec.getBoundingClientRect().top <= 200) current = sec.id;
+    });
+    navLinks.forEach(a => a.classList.remove('active'));
+    if (current && sectionMap[current]) sectionMap[current].classList.add('active');
+  });
+
+  const meterFills = document.querySelectorAll('.meter-fill');
+  const meterObs = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        setTimeout(() => { entry.target.style.width = entry.target.dataset.width + '%'; }, 200);
+        meterObs.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.5 });
+  meterFills.forEach(el => meterObs.observe(el));
+})();
+
+function toggleExpand(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+</script>
+
+</body>
+</html>
